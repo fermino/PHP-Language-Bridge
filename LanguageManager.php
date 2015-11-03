@@ -1,7 +1,7 @@
 <?php
 	require_once __DIR__ . '/Process.php';
 
-	require_once __DIR__ . '/LanguageException.php';
+	require_once __DIR__ . '/LanguageBridgeException.php';
 
 	class LanguageManager
 	{
@@ -90,7 +90,7 @@
 				return $Process->Execute(...$Arguments);
 			}
 
-			throw new LanguageException("{$Language} language is not installed");
+			throw new LanguageBridgeException("{$Language} language is not installed");
 		}
 
 		public function GetInstalledLanguages()
