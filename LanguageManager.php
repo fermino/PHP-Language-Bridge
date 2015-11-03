@@ -52,7 +52,7 @@
 		{
 			foreach($this->Languages as &$Language)
 			{
-				$LanguageProcess = new Process($Language['Command']);//, false, false);
+				$LanguageProcess = new Process($Language['Command'], false, false);
 
 				if($LanguageProcess->Execute($Language['VersionArgument']))
 				{
