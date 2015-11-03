@@ -5,7 +5,7 @@
 
 	class LanguageManager
 	{
-		private $Languages = array
+		protected $Languages = array
 		(
 			'lua' => array
 			(
@@ -14,6 +14,7 @@
 				'Version' => null,
 				'VersionArgument' => '-v',
 				'VersionRegex' => '/Lua (.*)  Copyright \(C\)/',
+				'Wrapper' => 'Lua/LanguageBridge.lua',
 				'ExecuteArguments' => array
 				(
 					'[[FILENAME]]'
@@ -26,6 +27,7 @@
 				'Version' => null,
 				'VersionArgument' => '-v',
 				'VersionRegex' => '/PHP (.*) \(cli\)/',
+				'Wrapper' => 'PHP/LanguageBridge.php',
 				'ExecuteArguments' => array
 				(
 					'[[FILENAME]]'
@@ -38,6 +40,7 @@
 				'Version' => null,
 				'VersionArgument' => '--version',
 				'VersionRegex' => '/Python (.*)/',
+				'Wrapper' => 'Python/LanguageBridge.py',
 				'ExecuteArguments' => array
 				(
 					'[[FILENAME]]'
@@ -76,13 +79,13 @@
 			}
 		}
 
-		public function Execute($Language, $Filename)
+		public function Execute($Language)
 		{
 			if($this->IsInstalled($Language))
 			{
 				$Process = new Process($this->Languages[$Language]['Command'], false, false);
 
-				$Arguments = str_replace('[[FILENAME]]', $Filename, $this->Languages[$Language]['ExecuteArguments']);
+				$Arguments = str_replace('[[FILENAME]]', 'Wrappers/' . $this->Languages[$Language]['Wrapper'], $this->Languages[$Language]['ExecuteArguments']);
 
 				return $Process->Execute(...$Arguments);
 			}
