@@ -21,7 +21,7 @@
 		public function __construct($Language, $Filename, $WorkingDirectory = null)
 		{
 			$this->Language = $Language;
-			$this->Filename = $Filename;
+			$this->Filename = realpath($Filename);
 
 			$this->WorkingDirectory = $WorkingDirectory;
 
