@@ -14,6 +14,12 @@
 			$this->ProtocolNode = json_encode(array('Type' => $Type, 'Data' => $Data)) . "\n";
 		}
 
+		public function GetType()
+		{ return $this->Type; }
+
+		public function GetData()
+		{ return $this->Data; }
+
 		public function GetProtocolNode()
 		{ return $this->ProtocolNode; }
 	}
