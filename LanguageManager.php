@@ -7,6 +7,7 @@
 	{
 		protected $Languages = array
 		(
+			// Load from Languages/*(.lang)?
 			'lua' => array
 			(
 				'Command' => 'lua',
@@ -47,6 +48,10 @@
 				)
 			)
 		);
+
+		const LUA = 'lua';
+		const PHP = 'php';
+		const PYTHON = 'python';
 
 		public function __construct()
 		{
