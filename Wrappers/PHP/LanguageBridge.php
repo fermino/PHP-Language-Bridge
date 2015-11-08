@@ -2,7 +2,7 @@
 	require_once __DIR__ . '/LanguageBridgeException.php';
 
 	$__Throw = function($Code = null)
-	{ throw new Exception("Can't decode protocol node" . (!empty($Code) ? sprintf('(0x%x)', $Code) : null)); };
+	{ throw new Exception("Can't decode protocol node" . (!empty($Code) ? sprintf(' (0x%x)', $Code) : null)); };
 
 	$__Process = array();
 
