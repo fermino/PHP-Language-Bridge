@@ -6,6 +6,7 @@
 	require_once __DIR__ . '/ProtocolNode.php';
 
 	require_once __DIR__ . '/BindedVariable.php';
+	require_once __DIR__ . '/BindedFunction.php';
 
 	class LanguageBridge extends LanguageManager
 	{
@@ -17,6 +18,7 @@
 		private $Process = null;
 
 		private $Variables = array();
+		private $Functions = array();
 
 		public function __construct($Language, $Filename, $WorkingDirectory = null)
 		{
@@ -33,44 +35,107 @@
 			$this->Variables[] = new BindedVariable($Name, $Value);
 		}
 
+		public function BindFunction($Name, callable $Function)
+		{
+			$this->Functions[$Name] = new BindedFunction($Name, $Function);
+		}
+
 		public function Execute()
 		{
 			$this->Process = parent::Execute($this->Language);
 
 			if($this->Process->IsRunning())
 			{
-				if(fwrite($this->Process->GetStdIn(), (new ProtocolNode(0x00, array('Filename' => realpath($this->Filename))))->GetProtocolNode()))
+				if(is_file($this->Filename) && is_readable($this->Filename))
 				{
-					if($this->Process->IsRunning())
+					if(fwrite($this->Process->GetStdIn(), (new ProtocolNode(0x00, array('Filename' => $this->Filename)))->GetProtocolNode()))
 					{
-						# Bridge
-
-						foreach($this->Variables as $Variable) // Variables
-							fwrite($this->Process->GetStdIn(), $Variable->GetProtocolNode());
-
 						if($this->Process->IsRunning())
 						{
-							# Execute
+							# Bridge
 
-							fwrite($this->Process->GetStdIn(), (new ProtocolNode(0xff))->GetProtocolNode());
+							foreach($this->Variables as $Variable) // Variables
+								fwrite($this->Process->GetStdIn(), $Variable->GetProtocolNode());
 
-							return $this;
+							foreach($this->Functions as $Function)
+								fwrite($this->Process->GetStdIn(), $Function->GetProtocolNode());
+
+							if($this->Process->IsRunning())
+							{
+								# Execute
+
+								fwrite($this->Process->GetStdIn(), (new ProtocolNode(0xff))->GetProtocolNode());
+
+								return $this;
+							}
+							else
+								throw new LanguageBridgeException("Can't execute (ProtocolNode 0xff) the script, the wrapper is not running");
 						}
+						else
+							throw new LanguageBridgeException("Can't sendbind Protocol Nodes, the wrapper is not running");
 					}
+					else
+						throw new LanguageBridgeException("Can't send script filename (ProtocolNode 0x00)");
 				}
+				else
+					throw new LanguageBridgeException("{$this->Filename} does not exist");
 			}
+			else
+				throw new LanguageBridgeException("Can't execute {$this->Language}");
+		}
+
+		private function GetTask()
+		{
+			$Line = fgets($this->Process->GetStdOut());
+
+			if(empty($Line))
+				$Line = fgets($this->Process->GetStdErr());
+
+			if(!empty($Line))
+			{
+				$ProtocolNode = json_decode(trim($Line));
+
+				if(!empty($ProtocolNode) && is_object($ProtocolNode))
+				{
+					if(isset($ProtocolNode->Type) && is_int($ProtocolNode->Type))
+					{
+						if(isset($ProtocolNode->Data) && is_object($ProtocolNode->Data))
+						{
+							$ProtocolNode = new ProtocolNode($ProtocolNode->Type, (array) $ProtocolNode->Data);
+
+							return $ProtocolNode;
+						}
+						else
+							throw new LanguageBridgeException('ProtocolNode.Data must be an array');
+					}
+					else
+						throw new LanguageBridgeException('ProtocolNode.Type must be an integer');
+				}
+				else
+					throw new LanguageBridgeException('ProtocolNode must be a JSON encoded array');
+			}
+
+			return false;
 		}
 
 		public function ExecuteTask()
 		{
-			$Task = fgets($this->Process->GetStdOut());
+			$ProtocolNode = $this->GetTask();
 
-			if(!empty($Task))
+			if($ProtocolNode !== false)
 			{
-				echo $Task;
+				if($ProtocolNode->GetType() == 0x21)
+				{
+					$ResponseNode = $this->Functions[$ProtocolNode->GetData()['Name']]->Call($ProtocolNode->GetData()['Arguments']);
+
+					$EncodedJson = json_encode($ResponseNode->GetProtocolNode());
+
+					return fwrite($this->Process->GetStdIn(), $EncodedJson) === strlen($EncodedJson);
+				}
+				// Switch, add default
 			}
 
-			// Sleep
+			return false;
 		}
 
 		public function IsRunning()
