@@ -5,74 +5,87 @@
 
 	class LanguageManager
 	{
-		protected $Languages = array
-		(
-			// Load from Languages/*(.lang)?
-			'lua' => array
-			(
-				'Command' => 'lua',
-				'Installed' => false,
-				'Version' => null,
-				'VersionArgument' => '-v',
-				'VersionRegex' => '/Lua (.*)  Copyright \(C\)/',
-				'Wrapper' => 'Lua/LanguageBridge.lua',
-				'ExecuteArguments' => array
-				(
-					'[[FILENAME]]'
-				)
-			),
-			'php' => array
-			(
-				'Command' => 'php',
-				'Installed' => false,
-				'Version' => null,
-				'VersionArgument' => '-v',
-				'VersionRegex' => '/PHP (.*) \(cli\)/',
-				'Wrapper' => 'PHP/LanguageBridge.php',
-				'ExecuteArguments' => array
-				(
-					'[[FILENAME]]'
-				)
-			),
-			'python' => array
-			(
-				'Command' => 'python',
-				'Installed' => false,
-				'Version' => null,
-				'VersionArgument' => '--version',
-				'VersionRegex' => '/Python (.*)/',
-				'Wrapper' => 'Python/LanguageBridge.py',
-				'ExecuteArguments' => array
-				(
-					'[[FILENAME]]'
-				)
-			)
-		);
+		private static $Languages = array();
 
-		const LUA = 'lua';
-		const PHP = 'php';
-		const PYTHON = 'python';
-
-		public function __construct()
+		private static function Load()
 		{
-			foreach($this->Languages as &$Language)
+			if(empty(self::$Languages))
 			{
-				$LanguageProcess = new Process($Language['Command'], false, false);
+				self::$Languages = array();
 
-				if($LanguageProcess->Execute($Language['VersionArgument']))
+				$Languages = array_filter(glob('Languages/*.json'), function($Filename) { return is_file($Filename); });
+
+				foreach($Languages as $LanguagePath)
 				{
-					$EndTime = time() + 1;
+					$Language = file_get_contents($LanguagePath);
 
-					while(time() < $EndTime)
+					if(!empty($Language))
 					{
-						$Line = fgets($LanguageProcess->GetStdOut());
+						$Language = json_decode($Language, true);
+
+						if(!empty($Language))
+						{
+							if(empty($Language['Name']))
+								throw new LanguageBridgeException("{$LanguagePath}[Name] must not be empty");
+
+							if(empty($Language['Command']))
+								throw new LanguageBridgeException("{$LanguagePath}[Command] must not be empty");
+
+							if(empty($Language['Extension']))
+								throw new LanguageBridgeException("{$LanguagePath}[Extension] must not be empty");
+
+							if(empty($Language['VersionArgument']))
+								throw new LanguageBridgeException("{$LanguagePath}[VersionArgument] must not be empty");
+
+							if(empty($Language['VersionRegex']))
+								throw new LanguageBridgeException("{$LanguagePath}[VersionRegex] must not be empty");
+
+							if(empty($Language['ExecuteArguments']))
+								throw new LanguageBridgeException("{$LanguagePath}[ExecuteArguments] must not be empty");
+
+							self::$Languages[$Language['Name']] = array
+							(
+								'Command'          => $Language['Command'],
+								'Installed'        => false,
+								'Version'          => null,
+								'VersionArgument'  => $Language['VersionArgument'],
+								'VersionRegex'     => $Language['VersionRegex'],
+								'Wrapper'          => 'Wrappers' . DIRECTORY_SEPARATOR . $Language['Name'] . DIRECTORY_SEPARATOR . 'LanguageBridge' . '.' . $Language['Extension'],
+								'ExecuteArguments' => $Language['ExecuteArguments']
+							);
+						}
+						else
+							throw new LanguageBridgeException("{$LanguagePath} must be a JSON encoded array");
+					}
+					else
+						throw new LanguageBridgeException("{$LanguagePath} must be a JSON encoded array");
+				}
+
+				self::CheckLanguages();
+			}
+		}
+
+		private static function CheckLanguages()
+		{
+			foreach(self::$Languages as &$Language)
+			{
+				$Process = new Process($Language['Command'], false, false);
+
+				if($Process->Execute($Language['VersionArgument']))
+				{
+					$Limit = time() + 1;
+
+					while(time() < $Limit)
+					{
+						$Line = fgets($Process->GetStdOut());
 
 						if(empty($Line))
-							$Line = fgets($LanguageProcess->GetStdErr());
+							$Line = fgets($Process->GetStdErr());
 
 						if(!empty($Line) && preg_match($Language['VersionRegex'], $Line, $Match))
 						{
 							$Language['Installed'] = true;
+
 							$Language['Version'] = $Match[1];
 
 							break;
@@ -84,27 +97,29 @@
 			}
 		}
 
-		public function Execute($Language)
+		public static function Execute($Language)
 		{
-			if($this->IsInstalled($Language))
-			{
-				$Process = new Process($this->Languages[$Language]['Command'], false, false);
+			self::Load();
 
-				$Arguments = str_replace('[[FILENAME]]', 'Wrappers/' . $this->Languages[$Language]['Wrapper'], $this->Languages[$Language]['ExecuteArguments']);
+			if(self::IsInstalled($Language))
+			{
+				$Process = new Process(self::$Languages[$Language]['Command'], false, false);
+
+				$Arguments = str_replace('[FILENAME]', 'Wrappers' . DIRECTORY_SEPARATOR . $Language . DIRECTORY_SEPARATOR . 'LanguageBridge' . self::$Languages[$Language]['Extension'], self::$Languages[$Language]['ExecuteArguments']);
 
 				return $Process->Execute(...$Arguments);
 			}
 
-			throw new LanguageBridgeException("{$Language} language is not installed");
+			throw new LanguageBridgeException("{$Language} is not installed");
 		}
 
-		public function GetInstalledLanguages()
+		public static function GetInstalledLanguages()
 		{
-			return array_keys(array_filter($this->Languages, function($Language) { return $Language['Installed']; }));
+			return array_keys(array_filter(self::$Languages, function($Language) { return $Language['Installed']; }));
 		}
 
-		public function IsInstalled($Language)
+		public static function IsInstalled($Language)
 		{
-			return in_array($Language, $this->GetInstalledLanguages());
+			return in_array($Language, self::GetInstalledLanguages());
 		}
 	}
