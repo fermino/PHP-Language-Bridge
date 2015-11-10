@@ -1,0 +1,10 @@
+{
+	"Name": "Lua",
+	"Command": "lua",
+	"Extension": "lua",
+
+	"VersionArgument": "-v",
+	"VersionRegex": "/Lua (.*)  Copyright \\(C\\)/",
+
+	"ExecuteArguments": "[FILENAME]"
+}
