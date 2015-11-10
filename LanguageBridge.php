@@ -8,7 +8,7 @@
 	require_once __DIR__ . '/BindedVariable.php';
 	require_once __DIR__ . '/BindedFunction.php';
 
-	class LanguageBridge extends LanguageManager
+	class LanguageBridge
 	{
 		private $Language = null;
 		private $Filename = null;
@@ -23,11 +23,7 @@
 		public function __construct($Language, $Filename, $WorkingDirectory = null)
 		{
 			$this->Language = $Language;
-			$this->Filename = realpath($Filename);
-
-			$this->WorkingDirectory = $WorkingDirectory;
-
-			parent::__construct();
+			$this->Filename = $Filename;
 		}
 
 		public function BindVariable($Name, $Value)
@@ -42,7 +38,7 @@
 
 		public function Execute()
 		{
-			$this->Process = parent::Execute($this->Language);
+			$this->Process = LanguageManager::Execute($this->Language);
 
 			if($this->Process->IsRunning())
 			{
