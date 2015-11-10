@@ -46,6 +46,7 @@
 							self::$Languages[$Language['Name']] = array
 							(
 								'Command'          => $Language['Command'],
+								'Extension'        => $Language['Extension'],
 								'Installed'        => false,
 								'Version'          => null,
 								'VersionArgument'  => $Language['VersionArgument'],
@@ -105,9 +106,9 @@
 			{
 				$Process = new Process(self::$Languages[$Language]['Command'], false, false);
 
-				$Arguments = str_replace('[FILENAME]', 'Wrappers' . DIRECTORY_SEPARATOR . $Language . DIRECTORY_SEPARATOR . 'LanguageBridge' . self::$Languages[$Language]['Extension'], self::$Languages[$Language]['ExecuteArguments']);
+				$Arguments = str_replace('[FILENAME]', 'Wrappers' . DIRECTORY_SEPARATOR . $Language . DIRECTORY_SEPARATOR . 'LanguageBridge' . '.' . self::$Languages[$Language]['Extension'], self::$Languages[$Language]['ExecuteArguments']);
 
-				return $Process->Execute(...$Arguments);
+				return $Process->Execute($Arguments);
 			}
 
 			throw new LanguageBridgeException("{$Language} is not installed");
